@@ -1,5 +1,6 @@
 import json
 import os
+import unicodedata
 from fuzzywuzzy import process
 
 from onepassword.encryption_key import EncryptionKey
@@ -18,6 +19,20 @@ class Keychain(object):
         result = reduce(lambda x, y: x and y, unlock_results)
         self._locked = not result
         return result
+
+    def find(self, name):
+        picked = []
+        keys = self._items.keys()
+        for key in keys:
+            type = self._items[key]._type
+            try:
+                if key.lower().find(unicode(name).lower()) > -1:
+                    if type == "webforms.WebForm" or type == "passwords.Password" or type == "wallet.onlineservices.GenericAccount":
+                        self._items[key].decrypt_with(self)
+                    picked.append(self._items[key])
+            except:
+                pass
+        return picked
 
     def item(self, name, fuzzy_threshold=100):
         """
@@ -98,6 +113,7 @@ class KeychainItem(object):
         self.password = None
         self._path = path
         self._type = type
+        self._details = {}
 
     @property
     def key_identifier(self):
@@ -115,6 +131,11 @@ class KeychainItem(object):
         encrypted_json = self._lazily_load("_encrypted_json")
         decrypted_json = key.decrypt(self._encrypted_json)
         self._data = json.loads(decrypted_json)
+
+        for field in self._data["fields"]:
+            if field["value"] != "":
+                self._details[field["name"]] = field["value"]
+
         self.password = self._find_password()
 
     def _find_password(self):

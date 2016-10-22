@@ -28,18 +28,26 @@ class CLI(object):
         """
         self._unlock_keychain()
 
-        item = self.keychain.item(
-            self.arguments.item,
-            fuzzy_threshold=self._fuzzy_threshold(),
-        )
-
-        if item is not None:
-            self.stdout.write("%s\n" % item.password)
+        if self.arguments.find:
+            for found in self.keychain.find(self.arguments.item):
+                print found.name, ":"
+                for value in found._details:
+                    print " - ", value, found._details[value]        
+        
         else:
-            self.stderr.write("1pass: Could not find an item named '%s'\n" % (
-                self.arguments.item,
-            ))
-            sys.exit(os.EX_DATAERR)
+            item = self.keychain.item( 
+                self.arguments.item, 
+                fuzzy_threshold=self._fuzzy_threshold(), 
+            ) 
+             
+            if item is not None: 
+                self.stdout.write("%s\n" % item.password) 
+            else: 
+                self.stderr.write("1pass: Could not find an item named '%s'\n" % ( 
+                    self.arguments.item, 
+                )) 
+                sys.exit(os.EX_DATAERR)                 
+
 
     def argument_parser(self):
         parser = argparse.ArgumentParser()
@@ -58,6 +66,11 @@ class CLI(object):
             "--no-prompt",
             action="store_true",
             help="Don't prompt for a password, read from STDIN instead",
+        )
+        parser.add_argument(
+            "--find",
+            action="store_true",
+            help="Find and display entries matching on the item",
         )
         return parser
 
